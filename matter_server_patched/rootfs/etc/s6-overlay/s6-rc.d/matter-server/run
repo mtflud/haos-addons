@@ -1,0 +1,126 @@
+#!/usr/bin/with-contenv bashio
+# vim: ft=bash
+# shellcheck shell=bash
+# ==============================================================================
+# Start matter-server service
+# ==============================================================================
+bashio::log.info "Starting Matter Server..."
+
+declare server_port
+declare log_level
+declare primary_interface
+declare server_entry
+declare env_entry
+declare env_name
+declare env_value
+declare env_vars_count
+matter_server_args=()
+extra_args=()
+
+if ! bashio::config.exists log_level; then
+  bashio::log.magenta 'No log_level set in config, fallback to info'
+fi
+log_level=$(bashio::string.lower "$(bashio::config log_level info)")
+
+# Map legacy Python Matter Server log levels to their matter.js equivalents.
+case "${log_level}" in
+  verbose) log_level="debug" ;;
+  warning) log_level="warn" ;;
+  critical) log_level="fatal" ;;
+esac
+
+# This fork add-on ALWAYS runs the patched server bundled in its base image.
+# The upstream add-on's npm-override path (matter_server_version / beta options)
+# is deliberately removed: it could silently replace the patched build under test.
+server_entry="/app/node_modules/matter-server/dist/esm/MatterServer.js"
+
+# Export custom environment variables before starting the server
+if bashio::config.has_value "matter_server_env_vars"; then
+  env_vars_count=$(bashio::config 'matter_server_env_vars | length')
+  for (( i=0; i < env_vars_count; i++ )); do
+    env_entry="$(bashio::config "matter_server_env_vars[${i}]")"
+
+    if [[ "${env_entry}" != *"="* ]]; then
+      bashio::exit.nok "Invalid matter_server_env_vars entry: ${env_entry} (expected KEY=VALUE)"
+    fi
+
+    env_name="${env_entry%%=*}"
+    env_value="${env_entry#*=}"
+
+    if ! [[ "${env_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      bashio::exit.nok "Invalid environment variable name in matter_server_env_vars: ${env_name}"
+    fi
+
+    export "${env_name}=${env_value}"
+    bashio::log.info "Exported Matter Server environment variable: ${env_name}"
+  done
+fi
+
+# Remove leftover migration backup data from a former beta Matter Server.
+if [ -d /data/.migrations ]; then
+  bashio::log.info "Deleting former migration backup data ... this can take some time ... be patient"
+  rm -rf /data/.migrations
+fi
+
+# Bind to internal hassio network only unless user requests to expose
+server_port="$(bashio::addon.port 5580)"
+if ! bashio::var.has_value "${server_port}"; then
+    server_port=5580
+    extra_args+=('--listen-address' "$(bashio::addon.ip_address)")
+    extra_args+=('--listen-address' '127.0.0.1')  # so the base-image healthcheck (localhost) reaches us
+fi
+
+if bashio::config.true "enable_test_net_dcl"; then
+    extra_args+=('--enable-test-net-dcl')
+    extra_args+=('--ota-provider-dir' "/config/updates")
+fi
+
+primary_interface="$(bashio::api.supervisor 'GET' '/network/info' '' 'first(.interfaces[] | select (.primary == true)) .interface')"
+
+# Try fallback method (e.g. in case NetworkManager is not available)
+# shellcheck disable=SC2086
+if [ -z ${primary_interface} ]; then
+  bashio::log.warning 'Trying fallback method to determine primary interface'
+  primary_interface="$(ip --json route show default | jq --raw-output '.[0].dev')"
+fi
+
+# shellcheck disable=SC2086
+if [ -z ${primary_interface} ] || [ ${primary_interface} == "null" ]; then
+    bashio::exit.nok "No primary network interface found!"
+fi
+
+if bashio::config.true "ble_proxy"; then
+    extra_args+=('--ble-proxy')
+    if bashio::config.has_value "bluetooth_adapter_id"; then
+        bashio::log.warning "Ignoring 'bluetooth_adapter_id' option: 'ble_proxy' is enabled (mutually exclusive)."
+    fi
+elif bashio::config.has_value "bluetooth_adapter_id"; then
+  # shellcheck disable=SC2207
+  extra_args+=('--bluetooth-adapter' $(bashio::config 'bluetooth_adapter_id'))
+fi
+
+if bashio::config.has_value "matter_server_args"; then
+  # shellcheck disable=SC2207
+  extra_args+=($(bashio::config 'matter_server_args'))
+fi
+
+bashio::log.info "Using '${primary_interface}' as primary network interface."
+
+# Send out discovery information to Home Assistant
+/etc/s6-overlay/scripts/matter-server-discovery &
+
+# shellcheck disable=SC2164
+cd /root
+
+# shellcheck disable=SC2206
+matter_server_args+=(
+  '--storage-path' "/data"
+  '--port' "${server_port}"
+  '--log-level' "${log_level}"
+  '--primary-interface' "${primary_interface}"
+  '--fabricid' 2
+  '--vendorid' 4939
+  ${extra_args[@]}
+)
+
+exec node --enable-source-maps "${server_entry}" "${matter_server_args[@]}"
