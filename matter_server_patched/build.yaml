@@ -1,7 +1,7 @@
 ---
 build_from:
-  aarch64: ghcr.io/mtflud/matterjs-server:1.2.2-wd.3@sha256:0efe02b379ae76d6dd3e4ab6308c9e4e11233291ee96927c920ab16f13739a06
-  amd64: ghcr.io/mtflud/matterjs-server:1.2.2-wd.3@sha256:0efe02b379ae76d6dd3e4ab6308c9e4e11233291ee96927c920ab16f13739a06
+  aarch64: ghcr.io/mtflud/matterjs-server:1.2.2-wd.3
+  amd64: ghcr.io/mtflud/matterjs-server:1.2.2-wd.3
 args:
   BASHIO_VERSION: 0.17.1
   TEMPIO_VERSION: 2024.11.2
