@@ -38,5 +38,5 @@ schema:
     - match(^[A-Za-z_][A-Za-z0-9_]*=.*$)?
 ports:
   5580/tcp: null
-stage: stable
+stage: experimental
 startup: services

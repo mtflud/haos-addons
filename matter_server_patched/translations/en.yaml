@@ -3,12 +3,6 @@ configuration:
   log_level:
     name: Matter Server Log Level
     description: Logging level of the Matter Server component.
-  beta:
-    name: Use the latest beta version
-    description: >-
-      Installs the latest beta of the Matter Server (matter.js based) from npm
-      on top of the bundled version. It is highly recommended to create a backup
-      before starting the app with this flag enabled!
   enable_test_net_dcl:
     name: Enable test-net DCL usage.
     description: >-
@@ -48,14 +42,5 @@ configuration:
       Server. Use "--help" to get a list of possible arguments. Note that
       arguments are also added by the startup script controlled by other
       app options.
-  matter_server_version:
-    name: Matter Server version
-    description: >-
-      Install a specific "matter-server" version from npm (takes precedence over
-      the Beta flag). Values with a major version >= 3 are ignored as leftover
-      Python Matter Server versions; unless the Beta flag is set, the bundled
-      version is used instead. WARNING:
-      An older version might have an incompatible storage format! Use this
-      feature with caution! Make sure you have a recent backup of the app!
 network:
   5580/tcp: Matter Server WebSocket server port.
