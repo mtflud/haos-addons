@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.2-wd.4
+
+- Replace a node subscription immediately when the server's final data-report
+  ACK cannot be delivered (peer-unresponsive), instead of waiting for the
+  subscription timeout (~11 min on 10-min-interval battery devices). Cuts the
+  stale-state window for missed contact-sensor reports to ~25-30s; queued
+  events (e.g. a missed door close) arrive with the replacement subscription.
+  Fork dist patch on `@matter/protocol`, guarded by behavioral tests and a
+  patch canary ([release](https://github.com/mtflud/matterjs-server/releases/tag/v1.2.2-wd.4)).
+- Ships matter.js 0.17.5-alpha.0-20260711 (upstream keepalive-liveness fix
+  included; fork keepalive dist patch retired).
+
 ## 1.2.2-wd.3
 
 - Blocker fix: empty subscription keepalives now refresh the watchdog's liveness signal (patched `@matter/node` `NetworkClient`, upstream [matter.js#4057](https://github.com/matter-js/matter.js/issues/4057)); healthy-but-quiet devices no longer false-trip at threshold. Guarded by a canary unit test and an end-to-end idle-node integration test ([release](https://github.com/mtflud/matterjs-server/releases/tag/v1.2.2-wd.3)).
