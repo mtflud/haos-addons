@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.6-wd.5
+
+- Rebase onto upstream matterjs-server 1.2.6 / matter.js 0.17.6 — picks up the
+  upstream peer-session-selection fix ("prefer the session the peer was last
+  heard from, skip peer-lost sessions"), the OTA-reboot resubscribe, and the
+  0.17.5 ICD and subscription-lifecycle improvements
+  ([release](https://github.com/mtflud/matterjs-server/releases/tag/v1.2.6-wd.5)).
+- New: cap the requested subscription max interval (default 300s, override via
+  `matter_server_env_vars` with `MAX_SUBSCRIPTION_INTERVAL=<seconds>`, 0
+  disables). Battery devices that negotiated ~10-minute report intervals
+  re-negotiate at ~5 minutes, bounding the worst-case window in which a
+  silently-dead subscription leaves entity states stale. The cap only ever
+  lowers an observed negotiated interval; mains-powered devices with ~1-minute
+  intervals are unaffected.
+- ACK-failure fast-resubscribe dist patch regenerated for matter.js 0.17.6
+  (upstream has no equivalent yet); subscription-liveness watchdog unchanged.
+
 ## 1.2.2-wd.4
 
 - Replace a node subscription immediately when the server's final data-report
